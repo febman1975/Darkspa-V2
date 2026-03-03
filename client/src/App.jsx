@@ -9,13 +9,12 @@ const adminApiKeyStorageKey = 'darkspa_admin_api_key';
 const fingerprintPublicKey = import.meta.env.VITE_FINGERPRINTJS_PUBLIC_KEY || '';
 const fingerprintRegion = (import.meta.env.VITE_FINGERPRINTJS_REGION || 'us').toLowerCase();
 const exportBuildTag = 'darkspa-assess-v5-20260302';
-const uiBuildTag = 'ui-20260303-01';
+const uiBuildTag = 'ui-20260303-02';
 
 const defaultSettings = {
-  filterLevel: 'medium',
   humanRedirectUrl: '',
   botRedirectUrl: '',
-  challengeRedirectUrl: '',
+  filterLevel: 'medium',
   minInteractions: 5,
   minBrowserTimeMs: 2500,
   challengeScore: 35,
@@ -782,7 +781,7 @@ export default function App() {
         ) : (
           <>
             <p className="sub" style={{ marginTop: 8 }}>
-              Configure filters per project profile, choose active routing, then download your deploy-ready index.php.
+              Configure Human/Bot destinations per profile, then download your deploy-ready index.php.
             </p>
 
             <div className="grid" style={{ alignItems: 'end' }}>
@@ -811,78 +810,12 @@ export default function App() {
 
             <div className="grid" style={{ marginTop: 12 }}>
               <div>
-                <label>Filter Level</label>
-                <select value={settingsForm.filterLevel} onChange={(event) => updateSettingsField('filterLevel', event.target.value)}>
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                  <option value="custom">custom</option>
-                </select>
-              </div>
-              <div>
-                <label>Min Browser Time (ms)</label>
-                <input type="number" value={settingsForm.minBrowserTimeMs} onChange={(event) => updateSettingsField('minBrowserTimeMs', Number(event.target.value || 0))} />
-              </div>
-              <div>
-                <label>Min Interactions</label>
-                <input type="number" value={settingsForm.minInteractions} onChange={(event) => updateSettingsField('minInteractions', Number(event.target.value || 0))} />
-              </div>
-              <div>
-                <label>Challenge Score</label>
-                <input type="number" value={settingsForm.challengeScore} onChange={(event) => updateSettingsField('challengeScore', Number(event.target.value || 0))} />
-              </div>
-              <div>
-                <label>Block Score</label>
-                <input type="number" value={settingsForm.blockScore} onChange={(event) => updateSettingsField('blockScore', Number(event.target.value || 0))} />
-              </div>
-              <div>
-                <label>Auto Block Threshold</label>
-                <input type="number" value={settingsForm.autoBlockThreshold} onChange={(event) => updateSettingsField('autoBlockThreshold', Number(event.target.value || 0))} />
-              </div>
-              <div>
-                <label>Auto Block Window (minutes)</label>
-                <input type="number" value={settingsForm.autoBlockWindowMinutes} onChange={(event) => updateSettingsField('autoBlockWindowMinutes', Number(event.target.value || 0))} />
-              </div>
-              <div>
-                <label>Auto Block Enabled</label>
-                <select value={settingsForm.autoBlockEnabled ? 'true' : 'false'} onChange={(event) => updateSettingsField('autoBlockEnabled', event.target.value === 'true')}>
-                  <option value="true">true</option>
-                  <option value="false">false</option>
-                </select>
-              </div>
-              <div>
-                <label>Telegram Notify</label>
-                <select value={settingsForm.telegramNotifyEnabled ? 'true' : 'false'} onChange={(event) => updateSettingsField('telegramNotifyEnabled', event.target.value === 'true')}>
-                  <option value="true">true</option>
-                  <option value="false">false</option>
-                </select>
-              </div>
-              <div>
-                <label>Telegram Notify Mode</label>
-                <select value={settingsForm.telegramNotifyMode || 'both'} onChange={(event) => updateSettingsField('telegramNotifyMode', event.target.value)}>
-                  <option value="both">both (allow + block)</option>
-                  <option value="allow">allow only</option>
-                  <option value="block">block only</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid" style={{ marginTop: 12 }}>
-              <div>
                 <label>Human Redirect URL</label>
                 <input value={settingsForm.humanRedirectUrl} onChange={(event) => updateSettingsField('humanRedirectUrl', event.target.value)} />
               </div>
               <div>
                 <label>Bot Redirect URL</label>
                 <input value={settingsForm.botRedirectUrl} onChange={(event) => updateSettingsField('botRedirectUrl', event.target.value)} />
-              </div>
-              <div>
-                <label>Telegram Bot Token</label>
-                <input value={settingsForm.telegramBotToken || ''} onChange={(event) => updateSettingsField('telegramBotToken', event.target.value)} placeholder="123456:ABC..." />
-              </div>
-              <div>
-                <label>Telegram Chat ID</label>
-                <input value={settingsForm.telegramChatId || ''} onChange={(event) => updateSettingsField('telegramChatId', event.target.value)} placeholder="e.g. 1713866119" />
               </div>
               <div>
                 <label>Settings Status</label>
@@ -898,7 +831,7 @@ export default function App() {
             </div>
 
             <div className="output">
-              Upload flow for cPanel:\n1) Click "Download index.php"\n2) Open cPanel File Manager\n3) Upload file into your site root (public_html)\n4) Ensure filename is index.php\n5) Done — routing uses this profile's filter settings.
+              Download and deploy flow:\n1) Click "Download index.php"\n2) Upload index.php to your web root\n3) Confirm filename stays exactly index.php\n4) Done — routing uses this profile's Human/Bot settings.
             </div>
           </>
         )}

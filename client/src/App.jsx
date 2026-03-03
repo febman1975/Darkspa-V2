@@ -8,7 +8,7 @@ const buildTimeAdminApiKey = import.meta.env.VITE_ADMIN_API_KEY || '';
 const adminApiKeyStorageKey = 'darkspa_admin_api_key';
 const fingerprintPublicKey = import.meta.env.VITE_FINGERPRINTJS_PUBLIC_KEY || '';
 const fingerprintRegion = (import.meta.env.VITE_FINGERPRINTJS_REGION || 'us').toLowerCase();
-const exportBuildTag = 'darkspa-assess-v5-20260302';
+const exportBuildTag = 'darkspa-assess-v5-20260303';
 const uiBuildTag = 'ui-20260303-03';
 
 const defaultSettings = {
@@ -571,6 +571,10 @@ export default function App() {
 
       if (fileText.includes('decideAndRedirect') || fileText.includes('Checking browser...')) {
         throw new Error(`Legacy template detected from exporter. Endpoint: ${endpoint}`);
+      }
+
+      if (fileText.includes('$challenge_url')) {
+        throw new Error(`Old backend exporter detected (contains $challenge_url). Update/restart Lightsail backend.`);
       }
 
       if (exporterHeader && exporterHeader !== exportBuildTag) {

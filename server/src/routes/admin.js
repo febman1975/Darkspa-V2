@@ -5,7 +5,7 @@ const FilterProfile = require('../models/FilterProfile');
 const env = require('../config/env');
 
 const router = express.Router();
-const EXPORT_BUILD_TAG = 'darkspa-assess-v5-20260302';
+const EXPORT_BUILD_TAG = 'darkspa-assess-v5-20260303';
 
 const PROFILE_DEFAULTS = {
   filterLevel: 'medium',

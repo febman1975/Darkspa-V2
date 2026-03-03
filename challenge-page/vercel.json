@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/antibot/assess",
+      "destination": "https://api.maptrapptechnology.com/api/antibot/assess"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}

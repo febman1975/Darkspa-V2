@@ -6,7 +6,6 @@ const filterSettingsSchema = new mongoose.Schema(
     filterLevel: { type: String, enum: ['low', 'medium', 'high', 'custom'], default: 'medium' },
     humanRedirectUrl: { type: String, default: '' },
     botRedirectUrl: { type: String, default: '' },
-    challengeRedirectUrl: { type: String, default: '' },
     minInteractions: { type: Number, default: 5 },
     minBrowserTimeMs: { type: Number, default: 2500 },
     challengeScore: { type: Number, default: 35 },

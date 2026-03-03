@@ -11,7 +11,6 @@ const PROFILE_DEFAULTS = {
   filterLevel: 'medium',
   humanRedirectUrl: '',
   botRedirectUrl: '',
-  challengeRedirectUrl: '',
   minInteractions: 5,
   minBrowserTimeMs: 2500,
   challengeScore: 35,
@@ -73,18 +72,6 @@ function deriveAssessUrl(settings) {
     return `${publicApiBaseUrl.replace(/\/$/, '')}/api/antibot/assess`;
   }
 
-  const challengeRaw = String(settings?.challengeRedirectUrl || '').trim();
-  if (challengeRaw) {
-    try {
-      const parsed = new URL(challengeRaw);
-      parsed.pathname = '/api/antibot/assess';
-      parsed.search = '';
-      parsed.hash = '';
-      return parsed.toString();
-    } catch (_error) {
-    }
-  }
-
   const corsOrigin = String(env.corsOrigin || '').trim();
   if (/^https?:\/\//i.test(corsOrigin)) {
     return `${corsOrigin.replace(/\/$/, '')}/api/antibot/assess`;
@@ -97,7 +84,6 @@ function buildIndexPhp(profile) {
   const settings = normalizeProfileSettings(profile.settings || {});
   const humanUrl = phpEscape(settings.humanRedirectUrl);
   const botUrl = phpEscape(settings.botRedirectUrl);
-  const challengeUrl = phpEscape(String(env.permanentChallengeUrl || settings.challengeRedirectUrl || '').trim());
   const assessUrl = phpEscape(deriveAssessUrl(settings));
   const assessResolveIp = phpEscape(env.exportAssessResolveIp);
 

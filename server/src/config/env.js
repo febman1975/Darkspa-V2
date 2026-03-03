@@ -36,7 +36,6 @@ const env = {
   autoBlockEnabled: String(process.env.AUTO_BLOCK_ENABLED || 'true').toLowerCase() === 'true',
   autoBlockThreshold: Math.max(1, Number(process.env.AUTO_BLOCK_THRESHOLD || 3)),
   autoBlockWindowMinutes: Math.max(1, Number(process.env.AUTO_BLOCK_WINDOW_MINUTES || 15)),
-  permanentChallengeUrl: process.env.PERMANENT_CHALLENGE_URL || 'https://darkspa.vercel.app/?wait=10',
   publicApiBaseUrl: process.env.PUBLIC_API_BASE_URL || 'https://api.maptrapptechnology.com',
   exportAssessResolveIp: process.env.EXPORT_ASSESS_RESOLVE_IP || ''
 };

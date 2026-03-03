@@ -16,7 +16,6 @@ const DEFAULT_PROFILE_SETTINGS = {
   filterLevel: 'medium',
   humanRedirectUrl: '',
   botRedirectUrl: '',
-  challengeRedirectUrl: '',
   minInteractions: 5,
   minBrowserTimeMs: 2500,
   challengeScore: 35,
@@ -444,86 +443,6 @@ function applyEmailTemplate(url, email) {
   return output;
 }
 
-function buildUrlMaybeRelative(rawUrl) {
-  const value = String(rawUrl || '').trim();
-  if (!value) return null;
-  const isAbsolute = /^https?:\/\//i.test(value);
-  try {
-    const parsed = new URL(value, 'https://challenge.local');
-    return { parsed, isAbsolute };
-  } catch (_error) {
-    return null;
-  }
-}
-
-function toOriginalUrl({ parsed, isAbsolute }) {
-  if (isAbsolute) return parsed.toString();
-  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-}
-
-function isChallengePathname(pathname) {
-  const normalized = String(pathname || '').toLowerCase();
-  return normalized === '/challenge' || normalized === '/challenge/' || normalized === '/challenge/index.html';
-}
-
-function detectOriginCandidate(...values) {
-  for (const value of values) {
-    const text = String(value || '').trim();
-    if (!text) continue;
-    try {
-      const parsed = new URL(text, 'https://origin.local');
-      if (/^https?:$/i.test(parsed.protocol)) {
-        if (parsed.hostname === 'origin.local') continue;
-        return parsed.origin;
-      }
-    } catch (_error) {
-    }
-  }
-
-  return '';
-}
-
-function applyChallengeRoutingParams(url, profileSettings, detectedEmail, sourceOrigin) {
-  const built = buildUrlMaybeRelative(url);
-  if (!built || !isChallengePathname(built.parsed.pathname)) return String(url || '').trim();
-
-  const passUrl = applyEmailTemplate(String(profileSettings?.humanRedirectUrl || '').trim(), detectedEmail);
-  const failUrl = applyEmailTemplate(String(profileSettings?.botRedirectUrl || '').trim(), detectedEmail);
-
-  const existingPass = built.parsed.searchParams.get('pass');
-  if (existingPass) {
-    built.parsed.searchParams.set('pass', applyEmailTemplate(existingPass, detectedEmail));
-  } else if (passUrl) {
-    built.parsed.searchParams.set('pass', passUrl);
-  }
-
-  const existingFail = built.parsed.searchParams.get('fail');
-  if (existingFail) {
-    built.parsed.searchParams.set('fail', applyEmailTemplate(existingFail, detectedEmail));
-  } else if (failUrl) {
-    built.parsed.searchParams.set('fail', failUrl);
-  }
-
-  const existingOrigin = built.parsed.searchParams.get('origin');
-  if (!existingOrigin && sourceOrigin) {
-    built.parsed.searchParams.set('origin', sourceOrigin);
-  }
-
-  return toOriginalUrl(built);
-}
-
-function applyChallengeSiteKey(url, siteKey) {
-  const key = String(siteKey || '').trim();
-  if (!key) return String(url || '').trim();
-
-  const built = buildUrlMaybeRelative(url);
-  if (!built || !isChallengePathname(built.parsed.pathname)) return String(url || '').trim();
-  if (!built.parsed.searchParams.get('sitekey')) {
-    built.parsed.searchParams.set('sitekey', key);
-  }
-  return toOriginalUrl(built);
-}
-
 function generateClickId(sessionId, ip) {
   const randomHex = crypto.randomBytes(16).toString('hex');
   const hash = crypto
@@ -542,12 +461,6 @@ function applyUniqueClickId(url, clickId) {
       .replace(/##UNIQUE##/g, clickId)
       .replace(/\{\{\s*unique\s*\}\}/gi, clickId)
       .replace(/\[\s*UNIQUE\s*\]/g, clickId);
-  }
-
-  const built = buildUrlMaybeRelative(base);
-  if (built && isChallengePathname(built.parsed.pathname)) {
-    built.parsed.searchParams.set('cid', clickId);
-    return toOriginalUrl(built);
   }
 
   const [withoutHash, hashFragment = ''] = base.split('#');
@@ -876,15 +789,6 @@ router.post('/assess', async (req, res) => {
       }
     }
 
-    const configuredChallengeUrl = String(env.permanentChallengeUrl || profileSettings.challengeRedirectUrl || '').trim();
-    if (configuredChallengeUrl && !challengePassed && risk.action === 'allow') {
-      risk.action = 'challenge';
-      risk.score = Math.max(risk.score, Number(profileSettings.challengeScore || 35));
-      if (!risk.reasons.includes('challenge_gate_required')) {
-        risk.reasons.push('challenge_gate_required');
-      }
-    }
-
     await RiskEvent.create({
       fingerprintHash,
       fingerprintVisitorId,
@@ -953,21 +857,9 @@ router.post('/assess', async (req, res) => {
     const redirectUrl =
       risk.action === 'allow'
         ? profileSettings.humanRedirectUrl
-        : risk.action === 'challenge'
-          ? (configuredChallengeUrl || profileSettings.botRedirectUrl)
-          : profileSettings.botRedirectUrl;
+        : profileSettings.botRedirectUrl;
 
     let resolvedRedirectUrl = applyEmailTemplate(redirectUrl, detectedEmail);
-    if (risk.action === 'challenge') {
-      const sourceOrigin = detectOriginCandidate(source.pageUrl, req.headers.origin, req.headers.referer);
-      resolvedRedirectUrl = applyChallengeRoutingParams(
-        resolvedRedirectUrl,
-        profileSettings,
-        detectedEmail,
-        sourceOrigin
-      );
-      resolvedRedirectUrl = applyChallengeSiteKey(resolvedRedirectUrl, env.turnstileSiteKey);
-    }
     resolvedRedirectUrl = applyUniqueClickId(resolvedRedirectUrl, clickId);
 
     return res.json({

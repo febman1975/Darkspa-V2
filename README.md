@@ -27,7 +27,7 @@ Required server values:
 - `PORT` (default `8080`)
 - `CORS_ORIGIN` (default `http://localhost:5173`)
 - `TURNSTILE_SECRET_KEY` (optional, needed for real Turnstile validation)
-- `TURNSTILE_SITE_KEY` (optional, auto-injected into `/challenge` redirect URLs when action is `challenge`)
+- `TURNSTILE_SITE_KEY` (optional)
 - `ADMIN_API_KEY` (recommended, protects `/api/admin/*` routes)
 - `TELEGRAM_BOT_TOKEN` (optional, enable per-visit alerts)
 - `TELEGRAM_CHAT_ID` (optional, chat/user/group id to receive alerts)
@@ -92,7 +92,7 @@ Use `npm start` as the start command.
 
 - You can keep multiple project profiles (e.g. `profile_1` ... `profile_7`) with custom names.
 - Each profile stores:
-  - human/bot/challenge redirect URLs
+  - human/bot redirect URLs
   - filter level and behavior thresholds
   - browser time + interaction requirements
   - challenge/block score thresholds
@@ -108,23 +108,6 @@ Use `npm start` as the start command.
   2. Upload downloaded file
   3. Rename to `index.php` if needed
   4. Ensure your domain points to that directory
-
-## Standalone challenge page (Railway / cPanel / any host)
-
-- A ready template is available at [challenge-page/index.html](challenge-page/index.html).
-- Host this file anywhere (Railway static app, cPanel subfolder, Vercel, Netlify, etc).
-- If you deploy this repo to Railway, it is also served directly by the backend at `/challenge`.
-- Set your profile `Challenge Redirect URL` to that hosted URL.
-
-Example URL format:
-
-`https://your-host.com/challenge/index.html?pass=https%3A%2F%2Fyour-human-url.com&fail=https%3A%2F%2Fyour-bot-url.com&wait=3&sitekey=YOUR_TURNSTILE_SITE_KEY`
-
-Parameters:
-- `pass` = where successful challenge users go
-- `fail` = fallback destination when checks are not completed
-- `wait` = required wait time in seconds
-- `sitekey` = optional Turnstile site key (remove for no captcha)
 
 Request sample:
 
@@ -150,14 +133,12 @@ Response sample:
 ```json
 {
   "success": true,
-  "allow": false,
-  "action": "challenge",
+  "allow": true,
+  "action": "allow",
   "score": 42,
-  "reasons": ["short_dwell", "medium_velocity"],
-  "challengeRequired": true,
-  "challengePassed": false,
+  "reasons": ["low_interaction", "medium_velocity"],
   "profile": { "id": "profile_1", "name": "Profile 1" },
-  "redirectUrl": "https://example.com/challenge"
+  "redirectUrl": "https://example.com/human"
 }
 ```
 

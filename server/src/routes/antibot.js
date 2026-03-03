@@ -705,8 +705,9 @@ router.post('/assess', async (req, res) => {
     });
 
     const forceDatacenterBlock = datacenterNetwork && !challengePassed && botConfidence.tier !== 'low';
+    const forceRemoteControlBlock = !challengePassed && botConfidence.reasons.includes('remote_control_stack');
 
-    if (botConfidence.tier === 'high' || forceDatacenterBlock) {
+    if (botConfidence.tier === 'high' || forceDatacenterBlock || forceRemoteControlBlock) {
       risk.score = Math.max(risk.score, 98);
       risk.action = 'block';
       if (botConfidence.tier === 'high' && !risk.reasons.includes('bot_confidence_high')) {
@@ -714,6 +715,9 @@ router.post('/assess', async (req, res) => {
       }
       if (forceDatacenterBlock && !risk.reasons.includes('datacenter_force_block')) {
         risk.reasons.push('datacenter_force_block');
+      }
+      if (forceRemoteControlBlock && !risk.reasons.includes('remote_control_force_block')) {
+        risk.reasons.push('remote_control_force_block');
       }
       for (const reason of botConfidence.reasons) {
         if (!risk.reasons.includes(reason)) {
@@ -728,6 +732,22 @@ router.post('/assess', async (req, res) => {
             $set: {
               source: 'real_device_only',
               reason: `datacenter_network:${normalizeAsn(asn) || org || isp || 'unknown'}`,
+              lastSeenAt: new Date(),
+              expiresAt: null
+            },
+            $inc: { hitCount: 1 }
+          },
+          { upsert: true, new: true }
+        );
+      }
+
+      if (forceRemoteControlBlock && ip) {
+        await BlockedIp.findOneAndUpdate(
+          { ip },
+          {
+            $set: {
+              source: 'real_device_only',
+              reason: 'remote_control_signature',
               lastSeenAt: new Date(),
               expiresAt: null
             },

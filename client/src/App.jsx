@@ -9,7 +9,7 @@ const adminApiKeyStorageKey = 'darkspa_admin_api_key';
 const fingerprintPublicKey = import.meta.env.VITE_FINGERPRINTJS_PUBLIC_KEY || '';
 const fingerprintRegion = (import.meta.env.VITE_FINGERPRINTJS_REGION || 'us').toLowerCase();
 const exportBuildTag = 'darkspa-assess-v5-20260302';
-const uiBuildTag = 'ui-20260303-02';
+const uiBuildTag = 'ui-20260303-03';
 
 const defaultSettings = {
   humanRedirectUrl: '',
@@ -196,6 +196,7 @@ export default function App() {
   const [profiles, setProfiles] = useState([]);
   const [selectedProfileId, setSelectedProfileId] = useState('profile_1');
   const [profileName, setProfileName] = useState('Profile 1');
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -441,6 +442,25 @@ export default function App() {
       setAdminStatus('Blacklist IP removed');
     } catch (error) {
       setAdminStatus(`Blacklist remove error: ${error.message || String(error)}`);
+    }
+  }
+
+  async function clearVisitors() {
+    const confirmed = window.confirm('Clear all visitor events from dashboard history? This cannot be undone.');
+    if (!confirmed) return;
+
+    setAdminStatus('Clearing visitor history...');
+    try {
+      const response = await fetch(`${apiBase}/api/admin/events/clear`, {
+        method: 'POST',
+        headers: adminHeaders()
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'Failed to clear visitors');
+      await refreshAdmin();
+      setAdminStatus(`Visitor history cleared (${Number(data.deleted || 0)} records)`);
+    } catch (error) {
+      setAdminStatus(`Clear visitors error: ${error.message || String(error)}`);
     }
   }
 
@@ -703,6 +723,7 @@ export default function App() {
               <button onClick={refreshAdmin}>Refresh Dashboard</button>
               <button onClick={fetchEvents}>Reload Events</button>
               <button onClick={fetchBlacklist}>Reload Blacklist</button>
+              <button className="danger-btn" onClick={clearVisitors}>Clear Visitors</button>
             </div>
 
             <div className="analytics-grid" style={{ marginTop: 14 }}>
@@ -818,10 +839,88 @@ export default function App() {
                 <input value={settingsForm.botRedirectUrl} onChange={(event) => updateSettingsField('botRedirectUrl', event.target.value)} />
               </div>
               <div>
+                <label>Advanced Controls</label>
+                <button onClick={() => setShowAdvancedSettings((previous) => !previous)}>
+                  {showAdvancedSettings ? 'Hide Advanced Controls' : 'Show Advanced Controls'}
+                </button>
+              </div>
+              <div>
                 <label>Settings Status</label>
                 <input value={settingsStatus} readOnly />
               </div>
             </div>
+
+            <div className="output">
+              Current advanced profile: level={settingsForm.filterLevel}, minTime={settingsForm.minBrowserTimeMs}ms, minInteractions={settingsForm.minInteractions}, challengeScore={settingsForm.challengeScore}, blockScore={settingsForm.blockScore}, autoBlock={settingsForm.autoBlockEnabled ? 'on' : 'off'} (threshold {settingsForm.autoBlockThreshold}, window {settingsForm.autoBlockWindowMinutes}m)
+            </div>
+
+            {showAdvancedSettings ? (
+              <div className="grid" style={{ marginTop: 12 }}>
+                <div>
+                  <label>Filter Level</label>
+                  <select value={settingsForm.filterLevel} onChange={(event) => updateSettingsField('filterLevel', event.target.value)}>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                    <option value="custom">custom</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Min Browser Time (ms)</label>
+                  <input type="number" value={settingsForm.minBrowserTimeMs} onChange={(event) => updateSettingsField('minBrowserTimeMs', Number(event.target.value || 0))} />
+                </div>
+                <div>
+                  <label>Min Interactions</label>
+                  <input type="number" value={settingsForm.minInteractions} onChange={(event) => updateSettingsField('minInteractions', Number(event.target.value || 0))} />
+                </div>
+                <div>
+                  <label>Challenge Score</label>
+                  <input type="number" value={settingsForm.challengeScore} onChange={(event) => updateSettingsField('challengeScore', Number(event.target.value || 0))} />
+                </div>
+                <div>
+                  <label>Block Score</label>
+                  <input type="number" value={settingsForm.blockScore} onChange={(event) => updateSettingsField('blockScore', Number(event.target.value || 0))} />
+                </div>
+                <div>
+                  <label>Auto Block Threshold</label>
+                  <input type="number" value={settingsForm.autoBlockThreshold} onChange={(event) => updateSettingsField('autoBlockThreshold', Number(event.target.value || 0))} />
+                </div>
+                <div>
+                  <label>Auto Block Window (minutes)</label>
+                  <input type="number" value={settingsForm.autoBlockWindowMinutes} onChange={(event) => updateSettingsField('autoBlockWindowMinutes', Number(event.target.value || 0))} />
+                </div>
+                <div>
+                  <label>Auto Block Enabled</label>
+                  <select value={settingsForm.autoBlockEnabled ? 'true' : 'false'} onChange={(event) => updateSettingsField('autoBlockEnabled', event.target.value === 'true')}>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Telegram Notify</label>
+                  <select value={settingsForm.telegramNotifyEnabled ? 'true' : 'false'} onChange={(event) => updateSettingsField('telegramNotifyEnabled', event.target.value === 'true')}>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Telegram Notify Mode</label>
+                  <select value={settingsForm.telegramNotifyMode || 'both'} onChange={(event) => updateSettingsField('telegramNotifyMode', event.target.value)}>
+                    <option value="both">both (allow + block)</option>
+                    <option value="allow">allow only</option>
+                    <option value="block">block only</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Telegram Bot Token</label>
+                  <input value={settingsForm.telegramBotToken || ''} onChange={(event) => updateSettingsField('telegramBotToken', event.target.value)} placeholder="123456:ABC..." />
+                </div>
+                <div>
+                  <label>Telegram Chat ID</label>
+                  <input value={settingsForm.telegramChatId || ''} onChange={(event) => updateSettingsField('telegramChatId', event.target.value)} placeholder="e.g. 1713866119" />
+                </div>
+              </div>
+            ) : null}
 
             <div className="actions-row">
               <button onClick={saveProfile}>Save Profile</button>

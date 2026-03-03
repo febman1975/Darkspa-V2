@@ -467,6 +467,15 @@ router.get('/events', async (req, res) => {
   }
 });
 
+router.post('/events/clear', async (_req, res) => {
+  try {
+    const result = await RiskEvent.deleteMany({});
+    return res.json({ success: true, deleted: Number(result?.deletedCount || 0) });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message || String(error) });
+  }
+});
+
 router.get('/blacklist', async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(500, Number(req.query.limit || 200)));

@@ -146,6 +146,14 @@ $request_uri = (string)($_SERVER['REQUEST_URI'] ?? '/');
 $page_url = $host ? ($scheme . '://' . $host . $request_uri) : $request_uri;
 $referrer = (string)($_SERVER['HTTP_REFERER'] ?? '');
 $user_agent = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
+$accept_language = (string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
+$accept_encoding = (string)($_SERVER['HTTP_ACCEPT_ENCODING'] ?? '');
+$sec_ch_ua = (string)($_SERVER['HTTP_SEC_CH_UA'] ?? '');
+$sec_ch_ua_mobile = (string)($_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '');
+$sec_ch_ua_platform = (string)($_SERVER['HTTP_SEC_CH_UA_PLATFORM'] ?? '');
+$sec_fetch_site = (string)($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '');
+$sec_fetch_mode = (string)($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '');
+$sec_fetch_dest = (string)($_SERVER['HTTP_SEC_FETCH_DEST'] ?? '');
 $path = parse_url($request_uri, PHP_URL_PATH);
 if (!$path) $path = '/';
 $client_ip = darkspa_get_client_ip();
@@ -163,7 +171,20 @@ if ($session_id === '') {
   ]);
 }
 
-$fingerprint = hash('sha256', strtolower($host) . '|' . $user_agent . '|' . $client_ip);
+$fingerprint_seed = implode('|', [
+  strtolower($host),
+  $user_agent,
+  $client_ip,
+  $accept_language,
+  $accept_encoding,
+  $sec_ch_ua,
+  $sec_ch_ua_mobile,
+  $sec_ch_ua_platform,
+  $sec_fetch_site,
+  $sec_fetch_mode,
+  $sec_fetch_dest
+]);
+$fingerprint = hash('sha256', $fingerprint_seed);
 
 $known_email = '';
 $email_keys = ['email', 'e', 'recipient', 'to', 'user'];
@@ -184,11 +205,23 @@ if ($known_email === '' && empty($_GET['__hash_migrated'])) {
 $payload = [
   'sessionId' => $session_id,
   'fingerprint' => $fingerprint,
+  'fingerprintVisitorId' => substr(hash('sha256', $fingerprint_seed . '|visitor'), 0, 32),
+  'fingerprintRequestId' => substr(hash('sha256', $fingerprint_seed . '|request|' . microtime(true)), 0, 32),
   'pageUrl' => $page_url,
   'referrer' => $referrer,
   'path' => $path,
   'source' => 'direct',
   'email' => $known_email,
+  'clientMeta' => [
+    'browser' => $user_agent,
+    'platform' => $sec_ch_ua_platform,
+    'acceptLanguage' => $accept_language,
+    'acceptEncoding' => $accept_encoding,
+    'secChUa' => $sec_ch_ua,
+    'secFetchSite' => $sec_fetch_site,
+    'secFetchMode' => $sec_fetch_mode,
+    'secFetchDest' => $sec_fetch_dest
+  ],
   'behavior' => [
     'mouseMoves' => 0,
     'clicks' => 0,

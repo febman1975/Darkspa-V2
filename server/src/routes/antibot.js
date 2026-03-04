@@ -1,5 +1,4 @@
 const express = require('express');
-const crypto = require('crypto');
 const RiskEvent = require('../models/RiskEvent');
 const BlockedIp = require('../models/BlockedIp');
 const FilterProfile = require('../models/FilterProfile');
@@ -443,34 +442,6 @@ function applyEmailTemplate(url, email) {
   return output;
 }
 
-function generateClickId(sessionId, ip) {
-  const randomHex = crypto.randomBytes(16).toString('hex');
-  const hash = crypto
-    .createHash('sha256')
-    .update(`${randomHex}|${sessionId || ''}|${ip || ''}|${Date.now()}|${Math.random()}`)
-    .digest('hex');
-  return `${randomHex}.${hash}`;
-}
-
-function applyUniqueClickId(url, clickId) {
-  const base = String(url || '').trim();
-  if (!base || !clickId) return base;
-
-  if (/##UNIQUE##|\{\{\s*unique\s*\}\}|\[\s*UNIQUE\s*\]/i.test(base)) {
-    return base
-      .replace(/##UNIQUE##/g, clickId)
-      .replace(/\{\{\s*unique\s*\}\}/gi, clickId)
-      .replace(/\[\s*UNIQUE\s*\]/g, clickId);
-  }
-
-  const [withoutHash, hashFragment = ''] = base.split('#');
-  const [pathPart, queryPart = ''] = withoutHash.split('?');
-  const cleanPath = pathPart.endsWith('/') ? pathPart.slice(0, -1) : pathPart;
-  const withPath = `${cleanPath}/${clickId}`;
-  const withQuery = queryPart ? `${withPath}?${queryPart}` : withPath;
-  return hashFragment ? `${withQuery}#${hashFragment}` : withQuery;
-}
-
 async function isIpBlacklisted(ip) {
   if (!ip) return null;
   const now = new Date();
@@ -542,7 +513,6 @@ router.post('/assess', async (req, res) => {
     const cfData = source.cfData && typeof source.cfData === 'object' ? source.cfData : {};
 
     const ip = normalizeIp(req.headers['cf-connecting-ip'] || req.ip || '');
-    const clickId = generateClickId(sessionId, ip);
     const userAgent = req.headers['user-agent'] || '';
     const fingerprintSeed = fingerprintVisitorId || fingerprint;
     const fingerprintHash = fingerprintSeed ? sha256(fingerprintSeed) : '';
@@ -668,9 +638,8 @@ router.post('/assess', async (req, res) => {
           challengePassed: false,
           blacklisted: true,
           detectedEmail,
-          clickId,
           profile: { id: activeProfile.profileId, name: activeProfile.name },
-          redirectUrl: applyUniqueClickId(applyEmailTemplate(profileSettings.botRedirectUrl, detectedEmail), clickId)
+          redirectUrl: applyEmailTemplate(profileSettings.botRedirectUrl, detectedEmail)
         });
       }
     }
@@ -880,7 +849,6 @@ router.post('/assess', async (req, res) => {
         : profileSettings.botRedirectUrl;
 
     let resolvedRedirectUrl = applyEmailTemplate(redirectUrl, detectedEmail);
-    resolvedRedirectUrl = applyUniqueClickId(resolvedRedirectUrl, clickId);
 
     return res.json({
       success: true,
@@ -891,7 +859,6 @@ router.post('/assess', async (req, res) => {
       challengeRequired: risk.action !== 'allow',
       challengePassed,
       detectedEmail,
-      clickId,
       profile: { id: activeProfile.profileId, name: activeProfile.name },
       redirectUrl: resolvedRedirectUrl
     });
